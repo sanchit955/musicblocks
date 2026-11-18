@@ -753,6 +753,46 @@ describe("real ExtrasBlocks instances - direct method coverage", () => {
         instances["CommentBlock"].flow(["a comment"], logo, turtle, blk);
         expect(activity.textMsg).toHaveBeenCalledWith("a comment");
     });
+
+    describe("real WaitBlock flow() rejects non-finite waits", () => {
+        let singer;
+        let tur;
+
+        beforeEach(() => {
+            singer = { bpm: [120], turtleTime: 0, previousTurtleTime: 0 };
+            tur = { singer, doWait: jest.fn() };
+            activity.turtles.ithTurtle = jest.fn(() => tur);
+        });
+
+        test("advances the clock and waits for a finite number of seconds", () => {
+            instances["WaitBlock"].flow([2], logo, turtle, blk);
+            // bpmFactor = TONEBPM 240 / bpm 120 = 2; noteBeatValue = 2 / (1 / 2) = 4.
+            expect(singer.turtleTime).toBe(4);
+            expect(tur.doWait).toHaveBeenCalledWith(2);
+            expect(activity.errorMsg).not.toHaveBeenCalled();
+        });
+
+        test("still accepts a numeric string wait", () => {
+            instances["WaitBlock"].flow(["1.5"], logo, turtle, blk);
+            expect(singer.turtleTime).toBe(3);
+            expect(tur.doWait).toHaveBeenCalledWith("1.5");
+            expect(activity.errorMsg).not.toHaveBeenCalled();
+        });
+
+        test("refuses an infinite wait instead of poisoning the turtle clock", () => {
+            instances["WaitBlock"].flow([Infinity], logo, turtle, blk);
+            expect(singer.turtleTime).toBe(0);
+            expect(tur.doWait).not.toHaveBeenCalled();
+            expect(activity.errorMsg).toHaveBeenCalledWith("nan error", blk);
+        });
+
+        test("refuses a NaN wait instead of poisoning the turtle clock", () => {
+            instances["WaitBlock"].flow([NaN], logo, turtle, blk);
+            expect(singer.turtleTime).toBe(0);
+            expect(tur.doWait).not.toHaveBeenCalled();
+            expect(activity.errorMsg).toHaveBeenCalledWith("nan error", blk);
+        });
+    });
 });
 
 describe("proto block registration names", () => {

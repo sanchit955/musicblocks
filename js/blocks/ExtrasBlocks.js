@@ -486,11 +486,24 @@ function setupExtrasBlocks(activity) {
          * @param {Array} args - The arguments passed to the block.
          * @param {Logo} logo - The Logo interpreter instance.
          * @param {number} turtle - The turtle associated with the block.
+         * @param {string} blk - The block identifier.
          */
-        flow(args, logo, turtle) {
+        flow(args, logo, turtle, blk) {
             const tur = activity.turtles.ithTurtle(turtle);
 
             if (args.length === 1) {
+                // A non-finite wait poisons the turtle clock: Infinity
+                // from an overflowing multiply, or NaN loaded from a saved
+                // project, makes every later note's timing math Infinity
+                // or NaN. Reject it the way the other math blocks reject
+                // NaN, before touching turtleTime or doWait. The value is
+                // coerced with Number() first so a numeric string, which
+                // the wait has always accepted, still works.
+                if (!Number.isFinite(Number(args[0]))) {
+                    activity.errorMsg(NANERRORMSG, blk);
+                    return;
+                }
+
                 const bpmFactor =
                     TONEBPM / (tur.singer.bpm.length > 0 ? last(tur.singer.bpm) : Singer.masterBPM);
 
